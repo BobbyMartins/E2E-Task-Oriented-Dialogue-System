@@ -1,0 +1,545 @@
+{% extends "base.html" %}
+
+{% block title %}TOD Analytics Dashboard{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .analytics-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .stat-value {
+        font-size: 2em;
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 5px;
+    }
+    
+    .stat-label {
+        color: #7f8c8d;
+        font-size: 0.9em;
+    }
+    
+    .chart-container {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .chart-title {
+        font-size: 1.2em;
+        font-weight: bold;
+        margin-bottom: 15px;
+        color: #2c3e50;
+    }
+    
+    .filters-section {
+        background: #f8f9fa;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .filter-group label {
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+    
+    .filter-group select,
+    .filter-group input {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    .export-section {
+        text-align: center;
+        margin-top: 20px;
+    }
+    
+    .btn {
+        background-color: #3498db;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        margin: 0 5px;
+    }
+    
+    .btn:hover {
+        background-color: #2980b9;
+    }
+    
+    .btn-secondary {
+        background-color: #95a5a6;
+    }
+    
+    .btn-secondary:hover {
+        background-color: #7f8c8d;
+    }
+    
+    .comparison-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .model-comparison {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .model-title {
+        font-size: 1.1em;
+        font-weight: bold;
+        margin-bottom: 15px;
+        text-align: center;
+        padding: 10px;
+        border-radius: 4px;
+    }
+    
+    .bedrock-title {
+        background-color: #e8f4fd;
+        color: #2980b9;
+    }
+    
+    .grpotod-title {
+        background-color: #e8f6f3;
+        color: #27ae60;
+    }
+    
+    .metric-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #ecf0f1;
+    }
+    
+    .metric-row:last-child {
+        border-bottom: none;
+    }
+    
+    .metric-label {
+        font-weight: bold;
+        color: #2c3e50;
+    }
+    
+    .metric-value {
+        color: #7f8c8d;
+    }
+    
+    .no-data {
+        text-align: center;
+        color: #7f8c8d;
+        font-style: italic;
+        padding: 40px;
+    }
+    
+    @media (max-width: 768px) {
+        .comparison-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-container">
+    <h1>TOD Analytics Dashboard</h1>
+    
+    <!-- Filters Section -->
+    <div class="filters-section">
+        <h3>Filters</h3>
+        <form method="GET" action="{{ url_for('tod_analytics') }}">
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label for="model_type">Model Type:</label>
+                    <select name="model_type" id="model_type">
+                        <option value="">All Models</option>
+                        <option value="bedrock" {% if request.args.get('model_type') == 'bedrock' %}selected{% endif %}>Bedrock</option>
+                        <option value="grpotod" {% if request.args.get('model_type') == 'grpotod' %}selected{% endif %}>GRPOTOD</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="domain">Domain:</label>
+                    <select name="domain" id="domain">
+                        <option value="">All Domains</option>
+                        <option value="hotel" {% if request.args.get('domain') == 'hotel' %}selected{% endif %}>Hotel</option>
+                        <option value="restaurant" {% if request.args.get('domain') == 'restaurant' %}selected{% endif %}>Restaurant</option>
+                        <option value="flight" {% if request.args.get('domain') == 'flight' %}selected{% endif %}>Flight</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="status">Status:</label>
+                    <select name="status" id="status">
+                        <option value="">All Statuses</option>
+                        <option value="completed" {% if request.args.get('status') == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="abandoned" {% if request.args.get('status') == 'abandoned' %}selected{% endif %}>Abandoned</option>
+                        <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>Active</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="has_feedback">Has Feedback:</label>
+                    <select name="has_feedback" id="has_feedback">
+                        <option value="">All</option>
+                        <option value="true" {% if request.args.get('has_feedback') == 'true' %}selected{% endif %}>Yes</option>
+                        <option value="false" {% if request.args.get('has_feedback') == 'false' %}selected{% endif %}>No</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="date_from">Date From:</label>
+                    <input type="date" name="date_from" id="date_from" value="{{ request.args.get('date_from', '') }}">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="date_to">Date To:</label>
+                    <input type="date" name="date_to" id="date_to" value="{{ request.args.get('date_to', '') }}">
+                </div>
+            </div>
+            
+            <div style="text-align: center;">
+                <button type="submit" class="btn">Apply Filters</button>
+                <a href="{{ url_for('tod_analytics') }}" class="btn btn-secondary">Clear Filters</a>
+            </div>
+        </form>
+    </div>
+    
+    {% if summary_stats %}
+    <!-- Summary Statistics -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ summary_stats.total_conversations }}</div>
+            <div class="stat-label">Total Conversations</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-value">{{ summary_stats.conversations_with_feedback }}</div>
+            <div class="stat-label">With Feedback</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-value">{{ "%.1f"|format(summary_stats.feedback_rate * 100) }}%</div>
+            <div class="stat-label">Feedback Rate</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-value">{{ "%.1f"|format(summary_stats.completion_rate * 100) }}%</div>
+            <div class="stat-label">Completion Rate</div>
+        </div>
+    </div>
+    
+    <!-- Model Comparison -->
+    {% if model_comparison %}
+    <div class="comparison-grid">
+        <div class="model-comparison">
+            <div class="model-title bedrock-title">Bedrock Model</div>
+            <div class="metric-row">
+                <span class="metric-label">Total Conversations:</span>
+                <span class="metric-value">{{ model_comparison.bedrock.total_conversations }}</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Completion Rate:</span>
+                <span class="metric-value">{{ "%.1f"|format(model_comparison.bedrock.completion_rate * 100) }}%</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Avg Response Time:</span>
+                <span class="metric-value">
+                    {% if model_comparison.bedrock.average_response_time %}
+                        {{ "%.2f"|format(model_comparison.bedrock.average_response_time) }}s
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Feedback Rate:</span>
+                <span class="metric-value">{{ "%.1f"|format(model_comparison.bedrock.feedback_summary.feedback_rate * 100) }}%</span>
+            </div>
+            {% if model_comparison.bedrock.feedback_summary.average_scores %}
+            <div class="metric-row">
+                <span class="metric-label">Avg User Satisfaction:</span>
+                <span class="metric-value">
+                    {% if model_comparison.bedrock.feedback_summary.average_scores.user_satisfaction %}
+                        {{ "%.1f"|format(model_comparison.bedrock.feedback_summary.average_scores.user_satisfaction) }}/5
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="model-comparison">
+            <div class="model-title grpotod-title">GRPOTOD Model</div>
+            <div class="metric-row">
+                <span class="metric-label">Total Conversations:</span>
+                <span class="metric-value">{{ model_comparison.grpotod.total_conversations }}</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Completion Rate:</span>
+                <span class="metric-value">{{ "%.1f"|format(model_comparison.grpotod.completion_rate * 100) }}%</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Avg Response Time:</span>
+                <span class="metric-value">
+                    {% if model_comparison.grpotod.average_response_time %}
+                        {{ "%.2f"|format(model_comparison.grpotod.average_response_time) }}s
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Feedback Rate:</span>
+                <span class="metric-value">{{ "%.1f"|format(model_comparison.grpotod.feedback_summary.feedback_rate * 100) }}%</span>
+            </div>
+            {% if model_comparison.grpotod.feedback_summary.average_scores %}
+            <div class="metric-row">
+                <span class="metric-label">Avg User Satisfaction:</span>
+                <span class="metric-value">
+                    {% if model_comparison.grpotod.feedback_summary.average_scores.user_satisfaction %}
+                        {{ "%.1f"|format(model_comparison.grpotod.feedback_summary.average_scores.user_satisfaction) }}/5
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Charts Section -->
+    {% if summary_stats.average_scores %}
+    <div class="chart-container">
+        <div class="chart-title">Average Feedback Scores</div>
+        <canvas id="feedbackChart" width="400" height="200"></canvas>
+    </div>
+    {% endif %}
+    
+    {% if domain_distribution %}
+    <div class="chart-container">
+        <div class="chart-title">Conversations by Domain</div>
+        <canvas id="domainChart" width="400" height="200"></canvas>
+    </div>
+    {% endif %}
+    
+    {% if model_distribution %}
+    <div class="chart-container">
+        <div class="chart-title">Conversations by Model</div>
+        <canvas id="modelChart" width="400" height="200"></canvas>
+    </div>
+    {% endif %}
+    
+    {% if status_distribution %}
+    <div class="chart-container">
+        <div class="chart-title">Conversation Status Distribution</div>
+        <canvas id="statusChart" width="400" height="200"></canvas>
+    </div>
+    {% endif %}
+    
+    <!-- Export Section -->
+    <div class="export-section">
+        <h3>Export Data</h3>
+        <a href="{{ url_for('export_tod_data', format='json', **request.args) }}" class="btn">Export JSON</a>
+        <a href="{{ url_for('export_tod_data', format='csv', **request.args) }}" class="btn">Export CSV</a>
+    </div>
+    
+    {% else %}
+    <div class="no-data">
+        <h3>No TOD conversation data available</h3>
+        <p>Start some conversations in the <a href="{{ url_for('tod_simulator') }}">TOD Simulator</a> to see analytics here.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Chart.js configurations
+{% if summary_stats.average_scores %}
+// Feedback Scores Chart
+const feedbackCtx = document.getElementById('feedbackChart').getContext('2d');
+new Chart(feedbackCtx, {
+    type: 'bar',
+    data: {
+        labels: [
+            'Task Success', 'User Satisfaction', 'Appropriateness', 
+            'Naturalness', 'Coherence', 'Efficiency', 'Conciseness'
+        ],
+        datasets: [{
+            label: 'Average Score',
+            data: [
+                {{ summary_stats.average_scores.get('task_success_rate', 0) }},
+                {{ summary_stats.average_scores.get('user_satisfaction', 0) }},
+                {{ summary_stats.average_scores.get('appropriateness', 0) }},
+                {{ summary_stats.average_scores.get('naturalness', 0) }},
+                {{ summary_stats.average_scores.get('coherence', 0) }},
+                {{ summary_stats.average_scores.get('efficiency', 0) }},
+                {{ summary_stats.average_scores.get('conciseness', 0) }}
+            ],
+            backgroundColor: [
+                '#3498db', '#e74c3c', '#2ecc71', '#f39c12', 
+                '#9b59b6', '#1abc9c', '#34495e'
+            ],
+            borderColor: [
+                '#2980b9', '#c0392b', '#27ae60', '#e67e22',
+                '#8e44ad', '#16a085', '#2c3e50'
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 5,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+{% endif %}
+
+{% if domain_distribution %}
+// Domain Distribution Chart
+const domainCtx = document.getElementById('domainChart').getContext('2d');
+new Chart(domainCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ domain_distribution.keys() | list | tojson }},
+        datasets: [{
+            data: {{ domain_distribution.values() | list | tojson }},
+            backgroundColor: ['#3498db', '#e74c3c', '#2ecc71'],
+            borderColor: ['#2980b9', '#c0392b', '#27ae60'],
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+{% endif %}
+
+{% if model_distribution %}
+// Model Distribution Chart
+const modelCtx = document.getElementById('modelChart').getContext('2d');
+new Chart(modelCtx, {
+    type: 'pie',
+    data: {
+        labels: {{ model_distribution.keys() | list | tojson }},
+        datasets: [{
+            data: {{ model_distribution.values() | list | tojson }},
+            backgroundColor: ['#3498db', '#2ecc71'],
+            borderColor: ['#2980b9', '#27ae60'],
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+{% endif %}
+
+{% if status_distribution %}
+// Status Distribution Chart
+const statusCtx = document.getElementById('statusChart').getContext('2d');
+new Chart(statusCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ status_distribution.keys() | list | tojson }},
+        datasets: [{
+            label: 'Number of Conversations',
+            data: {{ status_distribution.values() | list | tojson }},
+            backgroundColor: ['#2ecc71', '#e74c3c', '#f39c12'],
+            borderColor: ['#27ae60', '#c0392b', '#e67e22'],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

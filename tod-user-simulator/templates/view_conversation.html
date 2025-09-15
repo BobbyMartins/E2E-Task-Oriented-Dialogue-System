@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Conversation Bot - View Conversation{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="conversation-view-container">
+        <div class="conversation-view-header">
+            <h2>Conversation Details</h2>
+            <div class="conversation-view-info">
+                <p><strong>ID:</strong> {{ conversation.id }}</p>
+                <p><strong>Date:</strong> {{ conversation.date }}</p>
+                <p><strong>Type:</strong> <span class="conversation-type {{ conversation.metadata.type }}" style="display: inline-block;">{{ conversation.metadata.type|capitalize }}</span></p>
+                <p><strong>Flow ID:</strong> {{ conversation.metadata.flow_id }}</p>
+                <p><strong>Intent:</strong> {{ conversation.metadata.intent }}</p>
+            </div>
+            <div class="conversation-view-actions">
+                <a href="{{ url_for('history') }}" class="btn secondary-btn">Back to History</a>
+                <button id="evaluate-btn" class="btn primary-btn">Evaluate Conversation</button>
+                <form action="{{ url_for('delete_conversation', conversation_id=conversation.id) }}" method="post" class="delete-form" onsubmit="return confirm('Are you sure you want to delete this conversation?');">
+                    <button type="submit" class="btn danger-btn">Delete</button>
+                </form>
+            </div>
+        </div>
+        
+        <div id="evaluation-container" style="display: none;" class="evaluation-container">
+            <h3>Conversation Evaluation</h3>
+            <div id="evaluation-loading" class="loading-container" style="display: none;">
+                <div class="loading"><div></div><div></div><div></div><div></div></div>
+                <p>Generating evaluation...</p>
+            </div>
+            <div id="evaluation-content" class="evaluation-content"></div>
+        </div>
+        
+        <div class="conversation-view-messages">
+            {% for message in conversation.conversation.messages %}
+            <div class="message {{ message.sender }}-message">
+                <div class="message-content">{{ message.content }}</div>
+                <div class="message-time">{{ message.timestamp }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const evaluateBtn = document.getElementById('evaluate-btn');
+        const evaluationContainer = document.getElementById('evaluation-container');
+        const evaluationLoading = document.getElementById('evaluation-loading');
+        const evaluationContent = document.getElementById('evaluation-content');
+        
+        evaluateBtn.addEventListener('click', function() {
+            // Show loading indicator
+            evaluationContainer.style.display = 'block';
+            evaluationLoading.style.display = 'block';
+            evaluationContent.innerHTML = '';
+            evaluateBtn.disabled = true;
+            
+            // Send request to evaluate the conversation
+            fetch('{{ url_for("evaluate_conversation", conversation_id=conversation.id) }}', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading indicator
+                evaluationLoading.style.display = 'none';
+                evaluateBtn.disabled = false;
+                
+                if (data.status === 'success') {
+                    // Display the evaluation
+                    let evaluationHtml = '<p>' + data.evaluation.replace(/\n/g, '<br>') + '</p>';
+                    
+                    // Add timestamp if it's a cached evaluation
+                    if (data.cached) {
+                        evaluationHtml += '<div class="evaluation-timestamp">Generated on ' + data.timestamp + '</div>';
+                    }
+                    
+                    evaluationContent.innerHTML = evaluationHtml;
+                } else {
+                    // Display error message
+                    evaluationContent.innerHTML = '<p class="error-message">Error: ' + data.error + '</p>';
+                }
+            })
+            .catch(error => {
+                // Hide loading indicator
+                evaluationLoading.style.display = 'none';
+                evaluateBtn.disabled = false;
+                
+                // Display error message
+                evaluationContent.innerHTML = '<p class="error-message">Failed to evaluate conversation. Please try again.</p>';
+                console.error('Error:', error);
+            });
+        });
+    });
+</script>
+{% endblock %}

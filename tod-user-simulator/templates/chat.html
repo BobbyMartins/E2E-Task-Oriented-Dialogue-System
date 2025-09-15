@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Conversation Bot - Chat{% endblock %}
+
+{% block head %}
+<meta name="flow_id" content="{{ flow_id }}">
+<meta name="intent" content="{{ intent }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    {% if using_manual_intents %}
+    <div class="chat-layout">
+        <div class="manual-intents-container chat-sidebar">
+            <div class="manual-intents-box">
+                <h3>Manual Intent Information</h3>
+                <div class="manual-intents-content">
+                    <div class="form-group">
+                        <label>Bot Functions:</label>
+                        <ul class="manual-functions-list">
+                            {% for function in bot_functions %}
+                            <li>{{ function }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="form-group">
+                        <label>Test Functionality:</label>
+                        <p>{{ intent }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    <div class="chat-container{% if using_manual_intents %} with-sidebar{% endif %}">
+        <div class="chat-header">
+            <h2>Conversation</h2>
+            <div class="chat-info">
+                <p><strong>Flow ID:</strong> {{ flow_id }}</p>
+                <p><strong>Intent:</strong> {{ intent }}</p>
+            </div>
+            <div class="chat-actions">
+                <a href="{{ url_for('reset') }}" class="btn secondary-btn">Reset Conversation</a>
+                <a href="{{ url_for('history') }}" class="btn secondary-btn">View History</a>
+            </div>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            {% if initial_message %}
+            <div class="message bot-message">
+                <div class="message-content">{{ initial_message }}</div>
+                <div class="message-time">Now</div>
+            </div>
+            {% endif %}
+        </div>
+        <!-- Loading container removed -->
+        <div class="chat-input">
+            <form id="message-form">
+                <input type="text" id="user-message" placeholder="Type your message..." required>
+                <button type="submit" class="btn primary-btn">Send</button>
+            </form>
+        </div>
+    </div>
+{% if using_manual_intents %}
+</div>
+{% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const messageForm = document.getElementById('message-form');
+        const userMessageInput = document.getElementById('user-message');
+        const chatMessages = document.getElementById('chat-messages');
+        
+        messageForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const userMessage = userMessageInput.value.trim();
+            if (!userMessage) return;
+            
+            // Add user message to chat
+            addMessage('user', userMessage);
+            
+            // Clear input
+            userMessageInput.value = '';
+            
+            // Disable input and show bot typing indicator
+            userMessageInput.disabled = true;
+            messageForm.querySelector('button').disabled = true;
+            
+            // Show bot typing indicator
+            const botTypingIndicator = addTypingIndicator('bot');
+            
+            // Send message to server
+            fetch('/send_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: userMessage }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Remove typing indicator
+                chatMessages.removeChild(botTypingIndicator);
+                
+                // Enable input
+                userMessageInput.disabled = false;
+                messageForm.querySelector('button').disabled = false;
+                
+                if (data.status === 'success') {
+                    // Add bot response to chat
+                    addMessage('bot', data.message);
+                    
+                    // Check if conversation has ended
+                    if (data.conversation_ended) {
+                        userMessageInput.disabled = true;
+                        messageForm.querySelector('button').disabled = true;
+                        addSystemMessage('Conversation has ended');
+                    }
+                } else {
+                    addSystemMessage('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                // Remove typing indicator
+                chatMessages.removeChild(botTypingIndicator);
+                
+                // Enable input
+                userMessageInput.disabled = false;
+                messageForm.querySelector('button').disabled = false;
+                
+                console.error('Error:', error);
+                addSystemMessage('Failed to send message. Please try again.');
+            });
+        });
+        
+        function addMessage(sender, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+            
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'message-time';
+            timeDiv.textContent = 'Now';
+            
+            messageDiv.appendChild(contentDiv);
+            messageDiv.appendChild(timeDiv);
+            
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function addSystemMessage(content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message system-message';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+            
+            messageDiv.appendChild(contentDiv);
+            
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function addTypingIndicator(sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message typing-indicator-container`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.innerHTML = '<div class="typing-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+            
+            messageDiv.appendChild(contentDiv);
+            
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            return messageDiv;
+        }
+    });
+</script>
+{% endblock %}

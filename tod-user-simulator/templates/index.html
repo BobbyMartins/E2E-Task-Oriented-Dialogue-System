@@ -1,0 +1,519 @@
+{% extends "base.html" %}
+
+{% block title %}Conversation Bot - Home{% endblock %}
+
+{% block content %}
+<div class="container">
+    {% if manual_intent_data %}
+    <div class="manual-intents-container">
+        <div class="manual-intents-box">
+            <h3>Saved Manual Intents</h3>
+            <div class="manual-intents-content">
+                <div class="form-group">
+                    <label>Bot Functions:</label>
+                    <ul class="manual-functions-list">
+                        {% for function in manual_intent_data.bot_functions %}
+                        <li>{{ function }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div class="form-group">
+                    <label>Test Functionality:</label>
+                    <p>{{ manual_intent_data.test_functionality }}</p>
+                </div>
+                <div class="manual-intents-actions">
+                    <button id="edit-manual-intents" class="btn secondary-btn">Edit</button>
+                    <button id="clear-manual-intents" class="btn danger-btn">Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    <!-- Intent Fallback Popup -->
+    <div id="intent-fallback-popup" class="popup-overlay" {% if intent_loading_error %}style="display: flex;"{% else %}style="display: none;"{% endif %}>
+        <div class="popup-content">
+            <h2>Intent Information Needed</h2>
+            <p>We couldn't load intents for this bot. Please provide the following information to continue:</p>
+            <form id="manual-intent-form">
+                <div class="form-group">
+                    <label for="bot_functions">Enter the functions of this botflow (one bullet point per line):</label>
+                    <textarea id="bot_functions" name="bot_functions" rows="5" required></textarea>
+                    <small>Example: Handle customer returns, Check order status, etc.</small>
+                </div>
+                <div class="form-group">
+                    <label for="test_functionality">What specific functionality would you like to test?</label>
+                    <input type="text" id="test_functionality" name="test_functionality" required>
+                    <small>This will be used as the intent for testing</small>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="save_for_future" name="save_for_future" value="true">
+                        Save this information for future sessions with this bot
+                    </label>
+                </div>
+                <input type="hidden" id="popup_flow_id" name="flow_id" value="{{ pending_flow_id }}">
+                <div class="popup-buttons">
+                    <button type="submit" class="btn primary-btn">Continue</button>
+                    <button type="button" class="btn secondary-btn" id="cancel-popup">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="form-container">
+        <h2>Start a Conversation</h2>
+        {% if error %}
+        <div class="error-message">
+            <p>{{ error }}</p>
+        </div>
+        {% endif %}
+        <form action="{{ url_for('chat') }}" method="post" id="conversation-form">
+            <div class="form-group">
+                <label for="flow_id">Flow ID (UUID):</label>
+                <div class="flow-id-container">
+                    <input type="text" id="flow_id" name="flow_id" value="{{ default_flow_id }}" placeholder="e.g., a260b009-1fe7-4785-921d-86b44f74cf63" required>
+                    <div class="search-container">
+                        <div class="search-input-group">
+                            <input type="text" id="search_term" placeholder="Search for a bot by name" value="{{ bot_name }}">
+                            <button type="button" id="search_button" class="btn secondary-btn">Search</button>
+                        </div>
+                        <div id="search_results" class="search-results" style="display: none;">
+                            <select id="bot_select" size="5" style="width: 100%;">
+                                <!-- Search results will be populated here -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <small>Enter a valid UUID for the flow ID or search for a bot by name</small>
+            </div>
+            <div class="form-group">
+                <label for="intent">Intent:</label>
+                {% if available_intents %}
+                <select id="intent" name="intent" required>
+                    {% for intent_name, intent_desc in available_intents.items() %}
+                    <option value="{{ intent_name }}" title="{{ intent_desc }}" {% if intent_name == selected_intent %}selected{% endif %}>{{ intent_name }}</option>
+                    {% endfor %}
+                </select>
+                <small>Select an intent to test</small>
+                {% else %}
+                <input type="text" id="intent" name="intent" placeholder="e.g., returnShoes" required>
+                <small>Enter the intent to test</small>
+                {% endif %}
+            </div>
+            <div class="form-group conversation-type">
+                <label>Conversation Type:</label>
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="conversation_type" value="manual" checked>
+                        Manual (You chat with the bot)
+                    </label>
+                    <label>
+                        <input type="radio" name="conversation_type" value="auto">
+                        Auto (Watch LLM simulate conversation)
+                    </label>
+                </div>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="btn primary-btn" id="start-btn">Start Conversation</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Intent fallback popup functionality
+        const intentFallbackPopup = document.getElementById('intent-fallback-popup');
+        const manualIntentForm = document.getElementById('manual-intent-form');
+        const cancelPopupButton = document.getElementById('cancel-popup');
+        const popupFlowId = document.getElementById('popup_flow_id');
+        
+        // Show popup function
+        function showIntentFallbackPopup(flowId) {
+            if (flowId) {
+                popupFlowId.value = flowId;
+            }
+            intentFallbackPopup.style.display = 'flex';
+            setTimeout(() => {
+                intentFallbackPopup.classList.add('active');
+            }, 10);
+        }
+        
+        // Hide popup function
+        function hideIntentFallbackPopup() {
+            intentFallbackPopup.classList.remove('active');
+            setTimeout(() => {
+                intentFallbackPopup.style.display = 'none';
+            }, 300);
+        }
+        
+        // Handle cancel button
+        if (cancelPopupButton) {
+            cancelPopupButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                hideIntentFallbackPopup();
+            });
+        }
+        
+        // Handle form submission
+        if (manualIntentForm) {
+            manualIntentForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                
+                // Validate form
+                const botFunctions = document.getElementById('bot_functions').value.trim();
+                const testFunctionality = document.getElementById('test_functionality').value.trim();
+                const flowId = popupFlowId.value;
+                
+                if (!botFunctions) {
+                    alert('Please enter at least one bot function');
+                    return;
+                }
+                
+                if (!testFunctionality) {
+                    alert('Please enter the functionality you want to test');
+                    return;
+                }
+                
+                if (!flowId) {
+                    alert('Flow ID is missing');
+                    return;
+                }
+                
+                // Create form data
+                const formData = new FormData();
+                formData.append('flow_id', flowId);
+                formData.append('bot_functions', botFunctions);
+                formData.append('test_functionality', testFunctionality);
+                formData.append('save_for_future', document.getElementById('save_for_future').checked ? 'true' : 'false');
+                
+                // Check if auto conversation was selected
+                const isAutoConversation = document.querySelector('input[name="conversation_type"]:checked').value === 'auto';
+                formData.append('auto_conversation', isAutoConversation ? 'true' : 'false');
+                
+                // Add the bot name if available in the search field
+                const searchTermValue = document.getElementById('search_term').value.trim();
+                if (searchTermValue) {
+                    formData.append('bot_name', searchTermValue);
+                }
+                
+                // Submit form via AJAX
+                fetch('{{ url_for("submit_manual_intents") }}', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Update the flow ID in the main form
+                        document.getElementById('flow_id').value = flowId;
+                        
+                        // Redirect to chat page
+                        window.location.href = data.redirect;
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to submit intent information. Please try again.');
+                });
+            });
+        }
+        
+        // Handle intent loading errors from AJAX requests
+        const handleIntentLoadingError = function(flowId) {
+            showIntentFallbackPopup(flowId);
+        };
+        
+        // Handle manual intents box
+        const editManualIntentsBtn = document.getElementById('edit-manual-intents');
+        const clearManualIntentsBtn = document.getElementById('clear-manual-intents');
+        
+        if (editManualIntentsBtn) {
+            editManualIntentsBtn.addEventListener('click', function() {
+                // Populate the popup with the saved manual intents
+                const botFunctions = document.getElementById('bot_functions');
+                const testFunctionality = document.getElementById('test_functionality');
+                const popupFlowId = document.getElementById('popup_flow_id');
+                
+                // Get the manual intents from the page
+                const manualFunctions = [];
+                document.querySelectorAll('.manual-functions-list li').forEach(function(li) {
+                    manualFunctions.push(li.textContent);
+                });
+                
+                const testFunc = document.querySelector('.manual-intents-content p').textContent;
+                const flowId = document.getElementById('flow_id').value;
+                
+                // Populate the popup
+                botFunctions.value = manualFunctions.join('\n');
+                testFunctionality.value = testFunc;
+                popupFlowId.value = flowId;
+                
+                // Show the popup
+                showIntentFallbackPopup(flowId);
+            });
+        }
+        
+        if (clearManualIntentsBtn) {
+            clearManualIntentsBtn.addEventListener('click', function() {
+                // Clear the session and reload the page
+                fetch('{{ url_for("reset") }}').then(function() {
+                    window.location.reload();
+                });
+            });
+        }
+        
+        // Original code continues
+        const conversationForm = document.getElementById('conversation-form');
+        const radioButtons = document.querySelectorAll('input[name="conversation_type"]');
+        const searchButton = document.getElementById('search_button');
+        const searchTerm = document.getElementById('search_term');
+        const searchResults = document.getElementById('search_results');
+        const botSelect = document.getElementById('bot_select');
+        const flowIdInput = document.getElementById('flow_id');
+        
+        // Handle form submission
+        conversationForm.addEventListener('submit', function(event) {
+            const flowId = flowIdInput.value;
+            // Simple UUID validation
+            const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            
+            if (!uuidPattern.test(flowId)) {
+                event.preventDefault();
+                alert('Please enter a valid UUID for the flow ID');
+                return;
+            }
+            
+            // Change form action based on the conversation type
+            const conversationType = document.querySelector('input[name="conversation_type"]:checked').value;
+            if (conversationType === 'auto') {
+                conversationForm.action = '{{ url_for("auto_conversation") }}';
+            } else {
+                conversationForm.action = '{{ url_for("chat") }}';
+            }
+        });
+        
+        // Handle bot search
+        searchButton.addEventListener('click', function() {
+            const term = searchTerm.value.trim();
+            if (!term) {
+                alert('Please enter a search term');
+                return;
+            }
+            
+            // Show loading state
+            searchButton.disabled = true;
+            searchButton.textContent = 'Searching...';
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('search_term', term);
+            
+            // Send search request
+            fetch('{{ url_for("search_bot") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Reset button state
+                searchButton.disabled = false;
+                searchButton.textContent = 'Search';
+                
+                if (data.status === 'success') {
+                    // Clear previous results
+                    botSelect.innerHTML = '';
+                    
+                    if (data.results.length === 0) {
+                        // No results found
+                        const option = document.createElement('option');
+                        option.textContent = 'No bots found';
+                        option.disabled = true;
+                        botSelect.appendChild(option);
+                    } else {
+                        // Add results to dropdown
+                        data.results.forEach(bot => {
+                            const option = document.createElement('option');
+                            option.value = bot.flow_id;
+                            option.textContent = `${bot.name} (${bot.flow_id})`;
+                            option.dataset.flowId = bot.flow_id;
+                            option.dataset.name = bot.name;
+                            botSelect.appendChild(option);
+                        });
+                    }
+                    
+                    // Show results
+                    searchResults.style.display = 'block';
+                } else {
+                    alert('Error searching for bots: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                searchButton.disabled = false;
+                searchButton.textContent = 'Search';
+                alert('Failed to search for bots. Please try again.');
+            });
+        });
+        
+        // Handle bot selection
+        botSelect.addEventListener('change', function() {
+            const selectedOption = botSelect.options[botSelect.selectedIndex];
+            if (selectedOption && selectedOption.dataset.flowId) {
+                // Set the flow ID input value
+                flowIdInput.value = selectedOption.dataset.flowId;
+                
+                // Get intents for the selected flow ID
+                const formData = new FormData();
+                formData.append('flow_id', selectedOption.dataset.flowId);
+                
+                // Show loading state
+                const intentElement = document.getElementById('intent');
+                intentElement.disabled = true;
+                if (intentElement.tagName === 'SELECT') {
+                    intentElement.innerHTML = '<option value="" disabled selected>Loading intents...</option>';
+                } else {
+                    intentElement.placeholder = 'Loading intents...';
+                }
+                
+                // Fetch intents for the selected flow ID
+                fetch('{{ url_for("get_flow_intents") }}', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.intent_loading_error) {
+                        // Handle intent loading error
+                        handleIntentLoadingError(selectedOption.dataset.flowId);
+                        return;
+                    }
+                    
+                    if (data.status === 'success') {
+                        // Clear manual intents if intents can be loaded
+                        const manualIntentsContainer = document.querySelector('.manual-intents-container');
+                        if (manualIntentsContainer) {
+                            manualIntentsContainer.style.display = 'none';
+                            // Also clear the session by making a request to reset manual intents
+                            fetch('{{ url_for("reset_manual_intents") }}');
+                        }
+                        
+                        // Keep the selected bot name in the search field
+                        searchTerm.value = selectedOption.dataset.name;
+                        // Create a select element for intents
+                        const intentContainer = document.getElementById('intent').parentNode;
+                        const oldIntent = document.getElementById('intent');
+                        const isSelect = oldIntent.tagName === 'SELECT';
+                        
+                        // If we have intents and the current element is not a select, replace it
+                        if (Object.keys(data.intents).length > 0 && !isSelect) {
+                            // Create new select element
+                            const newSelect = document.createElement('select');
+                            newSelect.id = 'intent';
+                            newSelect.name = 'intent';
+                            newSelect.required = true;
+                            
+                            // Add intents to the select element
+                            Object.entries(data.intents).forEach(([name, description]) => {
+                                const option = document.createElement('option');
+                                option.value = name;
+                                option.textContent = name;
+                                option.title = description;
+                                newSelect.appendChild(option);
+                            });
+                            
+                            // Replace the input with the select
+                            intentContainer.replaceChild(newSelect, oldIntent);
+                            
+                            // Update the small text
+                            const smallText = intentContainer.querySelector('small');
+                            if (smallText) {
+                                smallText.textContent = 'Select an intent to test';
+                            }
+                        } 
+                        // If we have intents and the current element is a select, update it
+                        else if (Object.keys(data.intents).length > 0 && isSelect) {
+                            // Clear existing options
+                            oldIntent.innerHTML = '';
+                            
+                            // Add intents to the select element
+                            Object.entries(data.intents).forEach(([name, description]) => {
+                                const option = document.createElement('option');
+                                option.value = name;
+                                option.textContent = name;
+                                option.title = description;
+                                oldIntent.appendChild(option);
+                            });
+                            
+                            // Enable the select
+                            oldIntent.disabled = false;
+                        } 
+                        // If we have no intents, ensure we have an input field
+                        else if (Object.keys(data.intents).length === 0 && isSelect) {
+                            // Create new input element
+                            const newInput = document.createElement('input');
+                            newInput.type = 'text';
+                            newInput.id = 'intent';
+                            newInput.name = 'intent';
+                            newInput.placeholder = 'e.g., returnShoes';
+                            newInput.required = true;
+                            
+                            // Replace the select with the input
+                            intentContainer.replaceChild(newInput, oldIntent);
+                            
+                            // Update the small text
+                            const smallText = intentContainer.querySelector('small');
+                            if (smallText) {
+                                smallText.textContent = 'Enter the intent to test';
+                            }
+                        } 
+                        // If we have no intents and the current element is an input, just reset it
+                        else {
+                            oldIntent.disabled = false;
+                            oldIntent.placeholder = 'e.g., returnShoes';
+                        }
+                    } else {
+                        // If there was an error, ensure the intent field is enabled
+                        const intentElement = document.getElementById('intent');
+                        intentElement.disabled = false;
+                        if (intentElement.tagName === 'SELECT') {
+                            intentElement.innerHTML = '<option value="" disabled selected>Failed to load intents</option>';
+                        } else {
+                            intentElement.placeholder = 'e.g., returnShoes';
+                        }
+                        console.error('Error getting intents:', data.error);
+                    }
+                })
+                .catch(error => {
+                    // If there was an error, ensure the intent field is enabled
+                    const intentElement = document.getElementById('intent');
+                    intentElement.disabled = false;
+                    if (intentElement.tagName === 'SELECT') {
+                        intentElement.innerHTML = '<option value="" disabled selected>Failed to load intents</option>';
+                    } else {
+                        intentElement.placeholder = 'e.g., returnShoes';
+                    }
+                    console.error('Error:', error);
+                });
+                
+                // Hide the results
+                searchResults.style.display = 'none';
+                
+                // Clear the search term
+                searchTerm.value = '';
+            }
+        });
+        
+        // Allow pressing Enter in search box to trigger search
+        searchTerm.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                searchButton.click();
+            }
+        });
+    });
+</script>
+{% endblock %}

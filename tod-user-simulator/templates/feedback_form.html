@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Feedback Form - TOD Evaluation{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="feedback-container">
+        <div class="feedback-header">
+            <h2>Conversation Feedback</h2>
+            <p>Please provide your feedback on the conversation you just had with the {{ model_type|title }} model in the {{ domain|title }} domain.</p>
+        </div>
+        
+        {% if conversation_summary %}
+        <div class="conversation-summary">
+            <h3>Conversation Summary</h3>
+            <div class="summary-details">
+                <p><strong>Domain:</strong> {{ domain|title }}</p>
+                <p><strong>Model:</strong> {{ model_type|title }}</p>
+                <p><strong>Total Turns:</strong> {{ conversation_summary.total_turns }}</p>
+                <p><strong>Duration:</strong> {{ conversation_summary.duration }}</p>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if error %}
+        <div class="error-message">
+            <p>{{ error }}</p>
+        </div>
+        {% endif %}
+        
+        <form action="{{ url_for('submit_feedback') }}" method="post" id="feedback-form">
+            <input type="hidden" name="session_id" value="{{ session_id }}">
+            
+            <!-- Task-level Metrics -->
+            <div class="feedback-section">
+                <h3>Task-Level Evaluation</h3>
+                <p>Please evaluate how well the system performed the overall task.</p>
+                
+                <div class="form-group">
+                    <label for="task_success_rate">Task Success Rate:</label>
+                    <div class="rating-group">
+                        <div class="rating-scale">
+                            {% for i in range(1, 6) %}
+                            <label class="rating-option">
+                                <input type="radio" name="task_success_rate" value="{{ i }}" required>
+                                <span class="rating-label">{{ i }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <div class="rating-description">
+                            <span class="rating-low">1 = Task completely failed</span>
+                            <span class="rating-high">5 = Task completed successfully</span>
+                        </div>
+                    </div>
+                    <small>How successfully did the system complete the intended task?</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="user_satisfaction">User Satisfaction:</label>
+                    <div class="rating-group">
+                        <div class="rating-scale">
+                            {% for i in range(1, 6) %}
+                            <label class="rating-option">
+                                <input type="radio" name="user_satisfaction" value="{{ i }}" required>
+                                <span class="rating-label">{{ i }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <div class="rating-description">
+                            <span class="rating-low">1 = Very dissatisfied</span>
+                            <span class="rating-high">5 = Very satisfied</span>
+                        </div>
+                    </div>
+                    <small>How satisfied are you with the overall interaction?</small>
+                </div>
+            </div>
+            
+            <!-- Turn-level Metrics -->
+            <div class="feedback-section">
+                <h3>Turn-Level Evaluation</h3>
+                <p>Please evaluate the quality of individual responses during the conversation.</p>
+                
+                <div class="form-group">
+                    <label for="appropriateness">Appropriateness:</label>
+                    <div class="rating-group">
+                        <div class="rating-scale">
+                            {% for i in range(1, 6) %}
+                            <label class="rating-option">
+                                <input type="radio" name="appropriateness" value="{{ i }}" required>
+                                <span class="rating-label">{{ i }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <div class="rating-description">
+                            <span class="rating-low">1 = Very inappropriate</span>
+                            <span class="rating-high">5 = Very appropriate</span>
+                        </div>
+                    </div>
+                    <small>How appropriate were the system's responses to your inputs?</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="naturalness">Naturalness:</label>
+                    <div class="rating-group">
+                        <div class="rating-scale">
+                            {% for i in range(1, 6) %}
+                            <label class="rating-option">
+                                <input type="radio" name="naturalness" value="{{ i }}" required>
+                                <span class="rating-label">{{ i }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <div class="rating-description">
+                            <span class="rating-low">1 = Very unnatural</span>
+                            <span class="rating-high">5 = Very natural</span>
+                        </div>
+                    </div>
+                    <small>How natural and human-like did the conversation feel?</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="coherence">Coherence:</label>
+                    <div class="rating-group">
+                        <div class="rating-scale">
+                            {% for i in range(1, 6) %}
+                            <label class="rating-option">
+                                <input type="radio" name="coherence" value="{{ i }}" required>
+                                <span class="rating-label">{{ i }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <div class="rating-description">
+                            <span class="rating-low">1 = Very incoherent</span>
+                            <span class="rating-high">5 = Very coherent</span>
+                        </div>
+                    </div>
+                    <small>How well did the system maintain context and logical flow?</small>
+                </div>
+            </div>
+            
+            <!-- Dialogue-level Metrics -->
+            <div class="feedback-section">
+                <h3>Dialogue-Level Evaluation</h3>
+                <p>Please evaluate the overall conversation flow and efficiency.</p>
+                
+                <div class="form-group">
+                    <label for="efficiency">Efficiency:</label>
+                    <div class="rating-group">
+                        <div class="rating-scale">
+                            {% for i in range(1, 6) %}
+                            <label class="rating-option">
+                                <input type="radio" name="efficiency" value="{{ i }}" required>
+                                <span class="rating-label">{{ i }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <div class="rating-description">
+                            <span class="rating-low">1 = Very inefficient</span>
+                            <span class="rating-high">5 = Very efficient</span>
+                        </div>
+                    </div>
+                    <small>How efficiently did the system guide you through the task?</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="conciseness">Conciseness:</label>
+                    <div class="rating-group">
+                        <div class="rating-scale">
+                            {% for i in range(1, 6) %}
+                            <label class="rating-option">
+                                <input type="radio" name="conciseness" value="{{ i }}" required>
+                                <span class="rating-label">{{ i }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <div class="rating-description">
+                            <span class="rating-low">1 = Too verbose/brief</span>
+                            <span class="rating-high">5 = Perfect length</span>
+                        </div>
+                    </div>
+                    <small>How appropriate was the length of the system's responses?</small>
+                </div>
+            </div>
+            
+            <!-- Optional Comments -->
+            <div class="feedback-section">
+                <h3>Additional Comments</h3>
+                <div class="form-group">
+                    <label for="comments">Comments (Optional):</label>
+                    <textarea id="comments" name="comments" rows="4" placeholder="Please share any additional thoughts, suggestions, or specific issues you encountered..."></textarea>
+                    <small>Your detailed feedback helps us improve the system</small>
+                </div>
+            </div>
+            
+            <!-- Submit Button -->
+            <div class="form-group">
+                <button type="submit" class="btn primary-btn" id="submit-feedback">Submit Feedback</button>
+                <a href="{{ url_for('tod_simulator') }}" class="btn secondary-btn">Start New Session</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/feedback_form.js') }}"></script>
+{% endblock %}

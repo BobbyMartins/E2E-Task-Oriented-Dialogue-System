@@ -1,0 +1,441 @@
+{% extends "base.html" %}
+
+{% block title %}Feedback Summary - TOD Evaluation{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="feedback-summary-container">
+        <div class="summary-header">
+            <h2>Thank You for Your Feedback!</h2>
+            <p>Your feedback has been successfully submitted and will help improve the TOD system.</p>
+        </div>
+
+        <div class="conversation-summary-card">
+            <h3>Conversation Summary</h3>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <span class="summary-label">Domain:</span>
+                    <span class="summary-value">{{ summary_stats.domain|title }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Model:</span>
+                    <span class="summary-value">{{ summary_stats.model_type|title }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Assignment:</span>
+                    <span class="summary-value">{{ summary_stats.assignment_method|title }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Total Turns:</span>
+                    <span class="summary-value">{{ summary_stats.total_turns }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Your Messages:</span>
+                    <span class="summary-value">{{ summary_stats.user_turns }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Bot Messages:</span>
+                    <span class="summary-value">{{ summary_stats.bot_turns }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Duration:</span>
+                    <span class="summary-value">{{ summary_stats.duration }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Status:</span>
+                    <span class="summary-value status-{{ summary_stats.completion_status }}">
+                        {{ summary_stats.completion_status|title }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        {% if feedback_data %}
+        <div class="feedback-summary-card">
+            <h3>Your Feedback Summary</h3>
+            <div class="feedback-ratings">
+                <div class="rating-category">
+                    <h4>Task-Level Ratings</h4>
+                    <div class="rating-items">
+                        <div class="rating-item">
+                            <span class="rating-name">Task Success Rate:</span>
+                            <div class="rating-display">
+                                <div class="rating-stars">
+                                    {% for i in range(1, 6) %}
+                                    <span
+                                        class="star {% if i <= feedback_data.task_success_rate %}filled{% endif %}">★</span>
+                                    {% endfor %}
+                                </div>
+                                <span class="rating-number">{{ feedback_data.task_success_rate }}/5</span>
+                            </div>
+                        </div>
+                        <div class="rating-item">
+                            <span class="rating-name">User Satisfaction:</span>
+                            <div class="rating-display">
+                                <div class="rating-stars">
+                                    {% for i in range(1, 6) %}
+                                    <span
+                                        class="star {% if i <= feedback_data.user_satisfaction %}filled{% endif %}">★</span>
+                                    {% endfor %}
+                                </div>
+                                <span class="rating-number">{{ feedback_data.user_satisfaction }}/5</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rating-category">
+                    <h4>Turn-Level Ratings</h4>
+                    <div class="rating-items">
+                        <div class="rating-item">
+                            <span class="rating-name">Appropriateness:</span>
+                            <div class="rating-display">
+                                <div class="rating-stars">
+                                    {% for i in range(1, 6) %}
+                                    <span
+                                        class="star {% if i <= feedback_data.appropriateness %}filled{% endif %}">★</span>
+                                    {% endfor %}
+                                </div>
+                                <span class="rating-number">{{ feedback_data.appropriateness }}/5</span>
+                            </div>
+                        </div>
+                        <div class="rating-item">
+                            <span class="rating-name">Naturalness:</span>
+                            <div class="rating-display">
+                                <div class="rating-stars">
+                                    {% for i in range(1, 6) %}
+                                    <span class="star {% if i <= feedback_data.naturalness %}filled{% endif %}">★</span>
+                                    {% endfor %}
+                                </div>
+                                <span class="rating-number">{{ feedback_data.naturalness }}/5</span>
+                            </div>
+                        </div>
+                        <div class="rating-item">
+                            <span class="rating-name">Coherence:</span>
+                            <div class="rating-display">
+                                <div class="rating-stars">
+                                    {% for i in range(1, 6) %}
+                                    <span class="star {% if i <= feedback_data.coherence %}filled{% endif %}">★</span>
+                                    {% endfor %}
+                                </div>
+                                <span class="rating-number">{{ feedback_data.coherence }}/5</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rating-category">
+                    <h4>Dialogue-Level Ratings</h4>
+                    <div class="rating-items">
+                        <div class="rating-item">
+                            <span class="rating-name">Efficiency:</span>
+                            <div class="rating-display">
+                                <div class="rating-stars">
+                                    {% for i in range(1, 6) %}
+                                    <span class="star {% if i <= feedback_data.efficiency %}filled{% endif %}">★</span>
+                                    {% endfor %}
+                                </div>
+                                <span class="rating-number">{{ feedback_data.efficiency }}/5</span>
+                            </div>
+                        </div>
+                        <div class="rating-item">
+                            <span class="rating-name">Conciseness:</span>
+                            <div class="rating-display">
+                                <div class="rating-stars">
+                                    {% for i in range(1, 6) %}
+                                    <span class="star {% if i <= feedback_data.conciseness %}filled{% endif %}">★</span>
+                                    {% endfor %}
+                                </div>
+                                <span class="rating-number">{{ feedback_data.conciseness }}/5</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if feedback_data.comments %}
+                <div class="comments-section">
+                    <h4>Your Comments</h4>
+                    <div class="comments-text">
+                        {{ feedback_data.comments }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="overall-rating">
+                    <h4>Overall Average Rating</h4>
+                    <div class="overall-display">
+                        <div class="rating-stars large">
+                            {% set avg_rating = ((feedback_data.task_success_rate + feedback_data.user_satisfaction +
+                            feedback_data.appropriateness + feedback_data.naturalness + feedback_data.coherence +
+                            feedback_data.efficiency + feedback_data.conciseness) / 7) | round(1) %}
+                            {% for i in range(1, 6) %}
+                            <span class="star {% if i <= avg_rating %}filled{% endif %}">★</span>
+                            {% endfor %}
+                        </div>
+                        <span class="rating-number large">{{ avg_rating }}/5</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="next-steps">
+            <h3>What's Next?</h3>
+            <p>Your feedback contributes to ongoing research to improve Task-Oriented Dialogue systems. Thank you for
+                participating!</p>
+
+            <div class="action-buttons">
+                <a href="{{ url_for('tod_simulator') }}" class="btn primary-btn">Start New Session</a>
+                <a href="{{ url_for('tod_analytics') }}" class="btn secondary-btn">View Analytics</a>
+                <a href="{{ url_for('index') }}" class="btn secondary-btn">Return to Main Chat</a>
+            </div>
+        </div>
+
+        <div class="session-details">
+            <details>
+                <summary>Technical Details</summary>
+                <div class="technical-info">
+                    <p><strong>Session ID:</strong> {{ session_id }}</p>
+                    <p><strong>Feedback Timestamp:</strong> {{ feedback_data.feedback_timestamp if feedback_data else
+                        'N/A' }}</p>
+                    <p><strong>Data Storage:</strong> Local JSON storage</p>
+                </div>
+            </details>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+    .feedback-summary-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    .summary-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding: 2rem;
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+        border-radius: 8px;
+    }
+
+    .summary-header h2 {
+        margin: 0 0 1rem 0;
+        font-size: 2rem;
+    }
+
+    .conversation-summary-card,
+    .feedback-summary-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .summary-label {
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .summary-value {
+        font-weight: 500;
+        color: #212529;
+    }
+
+    .status-completed {
+        color: #28a745;
+        font-weight: bold;
+    }
+
+    .status-abandoned {
+        color: #dc3545;
+        font-weight: bold;
+    }
+
+    .rating-category {
+        margin-bottom: 2rem;
+    }
+
+    .rating-category h4 {
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .rating-items {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .rating-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+
+    .rating-name {
+        font-weight: 500;
+        color: #495057;
+    }
+
+    .rating-display {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .rating-stars {
+        display: flex;
+        gap: 2px;
+    }
+
+    .rating-stars.large {
+        gap: 4px;
+    }
+
+    .star {
+        color: #ddd;
+        font-size: 1.2rem;
+        transition: color 0.2s;
+    }
+
+    .star.filled {
+        color: #ffc107;
+    }
+
+    .rating-stars.large .star {
+        font-size: 1.5rem;
+    }
+
+    .rating-number {
+        font-weight: 600;
+        color: var(--primary-color);
+        min-width: 40px;
+        text-align: right;
+    }
+
+    .rating-number.large {
+        font-size: 1.2rem;
+    }
+
+    .comments-section {
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 2px solid #e9ecef;
+    }
+
+    .comments-text {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 4px;
+        border-left: 4px solid var(--primary-color);
+        font-style: italic;
+        color: #495057;
+        line-height: 1.6;
+    }
+
+    .overall-rating {
+        margin-top: 2rem;
+        padding: 2rem;
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        border-radius: 8px;
+        text-align: center;
+    }
+
+    .overall-display {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .next-steps {
+        text-align: center;
+        padding: 2rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 1.5rem;
+    }
+
+    .session-details {
+        margin-top: 2rem;
+    }
+
+    .session-details summary {
+        cursor: pointer;
+        font-weight: 500;
+        color: var(--primary-color);
+        padding: 0.5rem;
+    }
+
+    .technical-info {
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+        margin-top: 0.5rem;
+    }
+
+    .technical-info p {
+        margin: 0.5rem 0;
+        font-family: monospace;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+        .summary-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .rating-item {
+            flex-direction: column;
+            gap: 0.5rem;
+            text-align: center;
+        }
+
+        .overall-display {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}

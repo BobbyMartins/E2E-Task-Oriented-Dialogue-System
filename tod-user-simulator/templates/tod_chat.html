@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}TOD Chat - {{ domain|title }} Domain{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="chat-layout" style="display: flex; gap: 1.5rem; max-width: 1200px; margin: 0 auto; min-height: 80vh;">
+        <div class="tod-info-sidebar chat-sidebar" style="width: 300px; flex-shrink: 0; background-color: #fff; border-radius: 5px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); padding: 1.5rem; height: fit-content; max-height: 80vh; overflow-y: auto;">
+            <div class="tod-session-info">
+                <h3>Session Information</h3>
+                <div class="session-details">
+                    <p><strong>Domain:</strong> {{ domain|title }}</p>
+                    <p><strong>Model:</strong> {{ model_type|title }}</p>
+                    <p><strong>Session ID:</strong> {{ session_id }}</p>
+                    <p><strong>Assignment:</strong> {{ assignment_method|title }}</p>
+                </div>
+            </div>
+            
+            <div class="domain-context">
+                <h3>Domain Context</h3>
+                <div class="domain-description">
+                    <p>{{ domain_config.description }}</p>
+                </div>
+                
+                <div class="available-intents">
+                    <h4>Available Intents:</h4>
+                    <ul class="intent-list">
+                        {% for intent, description in domain_config.intent_list.items() %}
+                        <li>
+                            <strong>{{ intent }}:</strong> {{ description }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                
+                <div class="slot-information">
+                    <h4>Required Information:</h4>
+                    <ul class="slot-list">
+                        {% for slot, intents in domain_config.slots_to_fill.items() %}
+                        <li>
+                            <strong>{{ slot }}:</strong> for {{ intents|join(', ') }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="conversation-controls">
+                <button id="end-conversation" class="btn secondary-btn">End Conversation</button>
+                <a href="{{ url_for('tod_simulator') }}" class="btn secondary-btn">New Session</a>
+            </div>
+        </div>
+        
+        <div class="chat-container with-sidebar" style="flex: 1; display: flex; flex-direction: column; background-color: #fff; border-radius: 5px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); height: 80vh; min-width: 0;">
+            <div class="chat-header">
+                <h2>{{ domain|title }} Assistant</h2>
+                <div class="chat-info">
+                    <p><strong>Testing:</strong> {{ model_type|title }} Model</p>
+                    <p><strong>Turn:</strong> <span id="turn-counter">1</span></p>
+                </div>
+            </div>
+            
+            <div class="chat-messages" id="chat-messages">
+                {% if initial_message %}
+                <div class="message bot-message">
+                    <div class="message-content">{{ initial_message }}</div>
+                    <div class="message-time">Now</div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="chat-input" id="chat-input-container">
+                <form id="message-form">
+                    <input type="text" id="user-message" placeholder="Type your message..." required>
+                    <button type="submit" class="btn primary-btn">Send</button>
+                </form>
+            </div>
+            
+            <div id="conversation-ended" class="conversation-ended" style="display: none;">
+                <div class="ended-message">
+                    <h3>Conversation Ended</h3>
+                    <p>Thank you for testing the {{ domain|title }} domain with the {{ model_type|title }} model.</p>
+                    <p>Please provide feedback on your experience to help improve the system.</p>
+                    <button id="provide-feedback" class="btn primary-btn">Provide Feedback</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden form data -->
+<input type="hidden" id="session-id" value="{{ session_id }}">
+<input type="hidden" id="domain" value="{{ domain }}">
+<input type="hidden" id="model-type" value="{{ model_type }}">
+{% endblock %}
+
+{% block head %}
+<style>
+@media (max-width: 992px) {
+    .chat-layout {
+        flex-direction: column !important;
+    }
+    
+    .chat-sidebar {
+        width: 100% !important;
+        margin-bottom: 1.5rem !important;
+        max-height: none !important;
+    }
+    
+    .chat-container.with-sidebar {
+        height: 60vh !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/tod_chat.js') }}"></script>
+{% endblock %}

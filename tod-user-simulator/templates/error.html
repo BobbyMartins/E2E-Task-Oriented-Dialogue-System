@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Conversation Bot - Error{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="error-container">
+        <h2>Oops! Something went wrong</h2>
+        <div class="error-message">
+            <p>{{ error }}</p>
+        </div>
+        <a href="{{ url_for('index') }}" class="btn primary-btn">Go Back to Home</a>
+    </div>
+</div>
+{% endblock %}

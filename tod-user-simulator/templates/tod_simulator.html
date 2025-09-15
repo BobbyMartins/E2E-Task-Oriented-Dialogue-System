@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}TOD Simulator - Domain & Model Selection{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="form-container">
+        <h2>Task-Oriented Dialogue Simulator</h2>
+        <p>Select a domain and model to start testing the TOD system. You can either let the system randomly assign a model for A/B testing or manually choose one.</p>
+        
+        {% if error %}
+        <div class="error-message">
+            <p>{{ error }}</p>
+        </div>
+        {% endif %}
+        
+        <form action="{{ url_for('start_tod_session') }}" method="post" id="tod-simulator-form">
+            <div class="form-group">
+                <label for="domain">Select Domain:</label>
+                <select id="domain" name="domain" required>
+                    <option value="">Choose a domain...</option>
+                    <option value="hotel">Hotel Booking</option>
+                    <option value="restaurant">Restaurant Reservation</option>
+                    <option value="flight">Flight Booking</option>
+                </select>
+                <small>Choose the conversation domain you want to test</small>
+            </div>
+            
+            <div class="form-group">
+                <label>Model Assignment:</label>
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="assignment_type" value="random" checked>
+                        Random Assignment (Select this for A/B testing)
+                    </label>
+                    <label>
+                        <input type="radio" name="assignment_type" value="manual">
+                        Manual Selection
+                    </label>
+                </div>
+                <small>Random assignment helps ensure unbiased testing results</small>
+            </div>
+            
+            <div class="form-group" id="manual-model-selection" style="display: none;">
+                <label for="model_type">Select Model:</label>
+                <select id="model_type" name="model_type">
+                    <option value="">Choose a model...</option>
+                    <option value="bedrock">Bedrock Model (AWS Claude)</option>
+                    <option value="grpotod">GRPOTOD Custom Model</option>
+                </select>
+                <small>Manually choose which model to test</small>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" class="btn primary-btn" id="start-tod-btn">Start TOD Session</button>
+            </div>
+        </form>
+        
+        <div class="tod-info-section">
+            <h3>Domain Information</h3>
+            <div id="domain-info" class="domain-info-container">
+                <p>Select a domain above to see its description and capabilities.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/tod_simulator.js') }}"></script>
+{% endblock %}
